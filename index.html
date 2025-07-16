@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Security Camera - Live Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.3);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+        }
+
+        .camera-feed {
+            background: #000;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .feed-header {
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .camera-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timestamp {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #4CAF50;
+        }
+
+        .video-area {
+            height: calc(100% - 60px);
+            background: linear-gradient(45deg, #1a1a1a 0%, #2d2d2d 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .person {
+            width: 60px;
+            height: 120px;
+            background: #ff6b6b;
+            border-radius: 30px 30px 10px 10px;
+            position: absolute;
+            transition: all 0.5s ease;
+            cursor: pointer;
+        }
+
+        .person::before {
+            content: '';
+            position: absolute;
+            top: -25px;
+            left: 15px;
+            width: 30px;
+            height: 30px;
+            background: #ffb6b6;
+            border-radius: 50%;
+        }
+
+        .person::after {
+            content: '👤';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+        }
+
+        .face-box {
+            position: absolute;
+            border: 3px solid #4CAF50;
+            border-radius: 5px;
+            background: rgba(76, 175, 80, 0.1);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .face-box.crime-detected {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.2);
+            animation: warning-flash 1s infinite;
+        }
+
+        @keyframes warning-flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .face-label {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            height: fit-content;
+        }
+
+        .panel-section {
+            margin-bottom: 25px;
+        }
+
+        .panel-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #4CAF50;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .alert-panel {
+            background: rgba(244, 67, 54, 0.1);
+            border: 2px solid #f44336;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-panel.active {
+            display: block;
+            animation: alert-slide 0.5s ease;
+        }
+
+        @keyframes alert-slide {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .alert-title {
+            color: #f44336;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-details {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn.danger {
+            background: linear-gradient(45deg, #f44336 0%, #e91e63 100%);
+        }
+
+        .btn.danger:hover {
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .detection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(244, 67, 54, 0.1);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            font-weight: bold;
+            color: #f44336;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .detection-overlay.active {
+            display: flex;
+            animation: detection-flash 2s ease-in-out;
+        }
+
+        @keyframes detection-flash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .log-panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #4CAF50;
+            font-family: monospace;
+        }
+
+        .log-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                padding: 15px;
+            }
+            
+            .header {
+                padding: 10px 15px;
+            }
+            
+            .logo {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">🎥 AI Security Camera System</div>
+        <div class="status">
+            <div class="status-dot"></div>
+            <span>MONITORING ACTIVE</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="camera-feed">
+            <div class="feed-header">
+                <div class="camera-info">
+                    <span>📹 Camera 01 - Main Entrance</span>
+                </div>
+                <div class="timestamp" id="timestamp"></div>
+            </div>
+            <div class="video-area" id="videoArea">
+                <div class="person" id="person1" style="left: 200px; top: 150px;"></div>
+                <div class="detection-overlay" id="detectionOverlay">
+                    🚨 CRIME DETECTED
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="panel-section">
+                <div class="panel-title">📊 System Status</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="frameCount">0</div>
+                        <div class="stat-label">Frames</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="faceCount">0</div>
+                        <div class="stat-label">Faces</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="alertCount">0</div>
+                        <div class="stat-label">Alerts</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="uptime">00:00</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert-panel" id="alertPanel">
+                <div class="alert-title">
+                    🚨 CRIME ALERT
+                </div>
+                <div class="alert-details" id="alertDetails">
+                    <strong>Type:</strong> Theft<br>
+                    <strong>Confidence:</strong> 89%<br>
+                    <strong>Person:</strong> Unknown Individual<br>
+                    <strong>Location:</strong> Main Entrance<br>
+                    <strong>Status:</strong> Police Notified
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">🎛️ Controls</div>
+                <div class="control-buttons">
+                    <button class="btn" onclick="simulateCrime()">🎭 Simulate Crime</button>
+                    <button class="btn" onclick="addPerson()">👤 Add Person</button>
+                    <button class="btn" onclick="resetSystem()">🔄 Reset System</button>
+                    <button class="btn danger" onclick="togglePause()">⏸️ Pause Monitoring</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">📝 Activity Log</div>
+                <div class="log-panel" id="logPanel">
+                    <div class="log-entry">
+                        <span class="log-time">12:00:00</span>
+                        <span class="log-icon">🟢</span>
+                        <span>System initialized</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let frameCount = 0;
+        let faceCount = 0;
+        let alertCount = 0;
+        let startTime = Date.now();
+        let isMonitoring = true;
+        let personCount = 1;
+        let activeFaces = new Set();
+
+        // Update timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            document.getElementById('timestamp').textContent = now.toLocaleTimeString();
+        }
+
+        // Update uptime
+        function updateUptime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('uptime').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Update frame count
+        function updateFrameCount() {
+            if (isMonitoring) {
+                frameCount++;
+                document.getElementById('frameCount').textContent = frameCount;
+            }
+        }
+
+        // Detect faces
+        function detectFaces() {
+            const people = document.querySelectorAll('.person');
+            const videoArea = document.getElementById('videoArea');
+            
+            // Remove existing face boxes
+            document.querySelectorAll('.face-box').forEach(box => box.remove());
+            
+            let currentFaces = 0;
+            
+            people.forEach((person, index) => {
+                const rect = person.getBoundingClientRect();
+                const videoRect = videoArea.getBoundingClientRect();
+                
+                // Create face detection box
+                const faceBox = document.createElement('div');
+                faceBox.className = 'face-box';
+                faceBox.style.left = (rect.left - videoRect.left + 15) + 'px';
+                faceBox.style.top = (rect.top - videoRect.top - 10) + 'px';
+                faceBox.style.width = '30px';
+                faceBox.style.height = '30px';
+                
+                // Add label
+                const label = document.createElement('div');
+                label.className = 'face-label';
+                label.textContent = `Person ${index + 1}`;
+                faceBox.appendChild(label);
+                
+                videoArea.appendChild(faceBox);
+                currentFaces++;
+                
+                // Add to active faces
+                activeFaces.add(`person${index + 1}`);
+            });
+            
+            faceCount = currentFaces;
+            document.getElementById('faceCount').textContent = faceCount;
+        }
+
+        // Simulate crime detection
+        function simulateCrime() {
+            const alertPanel = document.getElementById('alertPanel');
+            const detectionOverlay = document.getElementById('detectionOverlay');
+            const faceBoxes = document.querySelectorAll('.face-box');
+            
+            // Show detection overlay
+            detectionOverlay.classList.add('active');
+            
+            // Make face boxes red
+            faceBoxes.forEach(box => {
+                box.classList.add('crime-detected');
+                box.querySelector('.face-label').textContent = 'SUSPECT DETECTED';
+            });
+            
+            // Show alert panel
+            alertPanel.classList.add('active');
+            
+            // Update alert count
+            alertCount++;
+            document.getElementById('alertCount').textContent = alertCount;
+            
+            // Add to log
+            addLogEntry('🚨', 'Crime detected - Police notified');
+            
+            // Reset after 3 seconds
+            setTimeout(() => {
+                detectionOverlay.classList.remove('active');
+                faceBoxes.forEach(box => {
+                    box.classList.remove('crime-detected');
+                    box.querySelector('.face-label').textContent = 'FACE DETECTED';
+                });
+                alertPanel.classList.remove('active');
+            }, 3000);
+        }
+
+        // Add person to scene
+        function addPerson() {
+            const videoArea = document.getElementById('videoArea');
+            const person = document.createElement('div');
+            person.className = 'person';
+            person.id = `person${++personCount}`;
+            
+            // Random position
+            const x = Math.random() * (videoArea.offsetWidth - 60);
+            const y = Math.random() * (videoArea.offsetHeight - 120);
+            person.style.left = x + 'px';
+            person.style.top = y + 'px';
+            
+            videoArea.appendChild(person);
+            
+            // Make person move
+            movePerson(person);
+            
+            addLogEntry('👤', `Person ${personCount} entered scene`);
+        }
+
+        // Move person randomly
+        function movePerson(person) {
+            const videoArea = document.getElementById('videoArea');
+            
+            setInterval(() => {
+                if (!isMonitoring) return;
+                
+                const currentLeft = parseInt(person.style.left);
+                const currentTop = parseInt(person.style.top);
+                
+                const newLeft = Math.max(0, Math.min(
+                    videoArea.offsetWidth - 60,
+                    currentLeft + (Math.random() - 0.5) * 100
+                ));
+                const newTop = Math.max(0, Math.min(
+                    videoArea.offsetHeight - 120,
+                    currentTop + (Math.random() - 0.5) * 100
+                ));
+                
+                person.style.left = newLeft + 'px';
+                person.style.top = newTop + 'px';
+            }, 2000);
+        }
+
+        // Reset system
+        function resetSystem() {
+            // Remove all people except first one
+            const people = document.querySelectorAll('.person');
+            people.forEach((person, index) => {
+                if (index > 0) person.remove();
+            });
+            
+            // Reset stats
+            frameCount = 0;
+            faceCount = 0;
+            alertCount = 0;
+            personCount = 1;
+            startTime = Date.now();
+            
+            document.getElementById('frameCount').textContent = '0';
+            document.getElementById('faceCount').textContent = '0';
+            document.getElementById('alertCount').textContent = '0';
+            document.getElementById('uptime').textContent = '00:00';
+            
+            // Clear log
+            document.getElementById('logPanel').innerHTML = `
+                <div class="log-entry">
+                    <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                    <span class="log-icon">🔄</span>
+                    <span>System reset</span>
+                </div>
+            `;
+            
+            // Hide alert panel
+            document.getElementById('alertPanel').classList.remove('active');
+        }
+
+        // Toggle pause
+        function togglePause() {
+            isMonitoring = !isMonitoring;
+            const btn = event.target;
+            const statusDot = document.querySelector('.status-dot');
+            const statusText = document.querySelector('.status span');
+            
+            if (isMonitoring) {
+                btn.textContent = '⏸️ Pause Monitoring';
+                statusDot.style.background = '#4CAF50';
+                statusText.textContent = 'MONITORING ACTIVE';
+                startTime = Date.now() - (frameCount * 33); // Approximate resume
+            } else {
+                btn.textContent = '▶️ Resume Monitoring';
+                statusDot.style.background = '#ff9800';
+                statusText.textContent = 'MONITORING PAUSED';
+            }
+            
+            addLogEntry('⏸️', `Monitoring ${isMonitoring ? 'resumed' : 'paused'}`);
+        }
+
+        // Add log entry
+        function addLogEntry(icon, message) {
+            const logPanel = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${new Date().toLocaleTimeString()}</span>
+                <span class="log-icon">${icon}</span>
+                <span>${message}</span>
+            `;
+            logPanel.insertBefore(entry, logPanel.firstChild);
+            
+            // Keep only last 10 entries
+            if (logPanel.children.length > 10) {
+                logPanel.removeChild(logPanel.lastChild);
+            }
+        }
+
+        // Initialize system
+        function init() {
+            updateTimestamp();
+            updateUptime();
+            updateFrameCount();
+            detectFaces();
+            
+            // Start person movement
+            const person1 = document.getElementById('person1');
+            movePerson(person1);
+            
+            addLogEntry('🟢', 'AI Security Camera System started');
+        }
+
+        // Main loop
+        setInterval(() => {
+            updateTimestamp();
+            updateUptime();
+            updateFrameCount();
+            detectFaces();
+        }, 100);
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
